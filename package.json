@@ -1,0 +1,25 @@
+{
+  "name": "presenziinbot",
+  "version": "1.0.1",
+  "description": "Telegram Bot untuk Presenziin",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Rafik NurF",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.26.0",
+    "base-64": "^1.0.0",
+    "cheerio": "^1.0.0-rc.10",
+    "date-and-time": "^2.3.0",
+    "dotenv": "^16.0.0",
+    "puppeteer": "^13.5.1",
+    "mongodb": "^4.5.0",
+    "telegraf": "^4.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/x1q2q/PresenziinBot.git"
+  }
+}
