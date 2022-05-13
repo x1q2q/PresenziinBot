@@ -19,7 +19,6 @@
     "telegraf": "^4.7.0"
   },
   "repository": {
-    "type": "git",
-    "url": "https://git.heroku.com/peaceful-lake-01302.git"
+    "type": "git"
   }
 }
