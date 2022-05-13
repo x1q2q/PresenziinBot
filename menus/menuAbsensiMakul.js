@@ -36,7 +36,7 @@ const absensiMKObj = {
 			await ctx.reply("Berhasil mengambil data makul");
     }catch(e){
 			dataMakul[0].status = false;
-			await ctx.reply("Gagal mengambil data makul\nSilakan ulangi perintah /absenmakul");
+			await ctx.reply("Gagal mengambil data makul, session login telah habis\nSilakan ulangi perintah /absenmakul");
     }
 		return dataMakul;
   },

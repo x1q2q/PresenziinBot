@@ -34,13 +34,14 @@ MongoDB.connectDB(async (err) => {
     var isExistID = await utils.checkExistID(userID);
     let message = "<b>[MENU UTAMA]</b>\n\n";
     if(isExistID){
-      message += '<b>Absensi</b>\n/gasabsen - tancap gas buat absen'+
+      message += '<b>Absensi</b>\n/login - ambil baru session akun'+
+      '\n/gasabsen - tancap gas buat absen'+
       '\n/absenmakul - cek absen per-makul'+
       '\n/rekapabsen - (as soon as possible)\n\n'+
       '<b>Profile</b>\n/showprofile - tampil profile akun'+
       '\n/editprofile - edit profile akun'+
       '\n/editlocation - edit lokasi absen'+
-      '\n/logout - logout session akun';
+      '\n/logout - hapus session akun';
     }else{
       message += '<b>Profile</b>\n/gasdaftar - tancap gas buat daftar\n\n'+
       '<pre>"Anda bisa menggunakan tools absen ketika sudah mendaftar"</pre>';
@@ -49,6 +50,27 @@ MongoDB.connectDB(async (err) => {
       console.log(ctx.from.first_name+' mengecek menuutama');
   })
 
+  bot.command('login', async (ctx) => {
+    var userID = ctx.chat.id.toString();
+    var isExistID = await utils.checkExistID(userID);
+    if(isExistID){
+      var isExpired = await utils.checkExpired(userID);
+      if(isExpired){
+        await ctx.reply("<b>Maaf akun anda telah expired :(</b>\nAnda tidak bisa menggunakan perintah ini lagi",
+              {parse_mode:'HTML'});
+      }else{
+        const newUser = await MongoDB.getCollection('users');
+        var userProfile = await newUser.find({userid:userID}).toArray();
+        if(userProfile[0]["cookie"] != "-"){ // ada cookie login, hapus dahulu
+          await newUser.updateOne({userid:userID},{$set:{cookie:'-'}});
+        }
+        const isLogin = await authLogin(ctx);
+        if(isLogin){
+          await ctx.reply("Silakan masuk ke /menuutama & lanjutkan perintah yang anda inginkan :)");
+        }
+      }
+    }
+  })
 
   bot.command('gasabsen', async (ctx) => {
     var userID = ctx.chat.id.toString();
@@ -192,34 +214,35 @@ MongoDB.connectDB(async (err) => {
           '-<b>Expired In</b> : '+expired_in+'\n\n'+
           '-<b>Status Akun</b> : '+status;
 
-      var options = {
-        parse_mode:'HTML',
-        reply_markup:{
-          inline_keyboard: [
-            [{text:"Show My Location",callback_data:"location"},
-            {text:"Edit My Profile ",callback_data:"profile"}]
-          ]
-        },
-      };
-      await bot.telegram.sendMessage(ctx.chat.id, strMenuProfile, options);
+      await bot.telegram.sendMessage(ctx.chat.id, strMenuProfile, {
+          parse_mode:'HTML',
+          reply_markup:{
+            inline_keyboard: [
+              [{text:"Show My Location",callback_data:"location"},
+              {text:"Edit My Profile ",callback_data:"profile"}]
+            ]
+          },
+        });
+
       await bot.action(['location','profile'], async (ctx) => {
+        const newUser = await MongoDB.getCollection('users');
+        var profile = await newUser.find({userid:userID}).toArray();
+
         let txt = ctx.match[0];
         await ctx.editMessageReplyMarkup({
           reply_markup: { remove_keyboard: true },
         })
         if(txt == 'location'){
           const newLoc = await MongoDB.getCollection('locations');
-          var dtLocation = await newLoc.find({}).toArray();
-
-          var currLoc = dtLocation.filter(el => el["nama_lokasi"] == location);
+          var currLoc = await newLoc.find({nama_lokasi:profile[0]["location"]}).toArray();
           if(currLoc.length > 0){
-            await ctx.reply('Menampilkan Koordinat untuk lokasi: <b>'+location+'</b>', {parse_mode:'HTML'});
+            await ctx.reply('Menampilkan Koordinat untuk lokasi: <b>'+currLoc[0]["nama_lokasi"]+'</b>', {parse_mode:'HTML'});
             return await bot.telegram.sendLocation(ctx.chat.id , currLoc[0]["latitude"], currLoc[0]["longitude"]);
           }else{
-            return await ctx.reply("Lokasi anda sekarang undefined, silakan ganti di menu /editprofile");
+            return await ctx.reply("Lokasi anda sekarang undefined, silakan ganti di menu /editlocation");
           }
         }else if(txt == 'profile'){ // menu edit
-          await ctx.reply('Menampilkan edit untuk profil: <b>'+email+'</b>', {parse_mode:'HTML'});
+          await ctx.reply('Menampilkan edit untuk profil: <b>'+profile[0]["email"]+'</b>', {parse_mode:'HTML'});
           return await ctx.scene.enter('edit');
         }
       });
@@ -512,7 +535,7 @@ MongoDB.connectDB(async (err) => {
       }
   );
   const reqLocation = new Scenes.WizardScene(
-      'location',
+      'reqLocation',
       async (ctx) => {
         try {
           await ctx.reply('<b>(1/2) Share lokasimu</b> cuk\n<i>(klik icon attach -> '+
@@ -557,11 +580,11 @@ MongoDB.connectDB(async (err) => {
           const isValidLokasi = await utils.isValidNamaLokasi(namaLoc);
           var filteredLoc = dataLoc.filter(el => el["nama_lokasi"] == location);
               dataLoc = dataLoc.map(el => el["nama_lokasi"]);
-          if (namaLoc.length < 8 || !isValidLokasi) {
-            ctx.reply("<b>Nama Lokasi yang dimasukkan invalid.</b>\n- Harus lebih dari 8 karakter"+
+          if (namaLoc.length < 6 || !isValidLokasi) {
+            ctx.reply("<b>Nama Lokasi yang dimasukkan invalid.</b>\n- Harus lebih dari 6 karakter"+
                 "\n- Tidak menggunakan karakter khusus\n\nSilakan ulangi langkah dari awal!",{parse_mode:'HTML'});
             return ctx.scene.leave();
-          }else if(dataLoc.includes(namaLoc)){
+          }else if(dataLoc.includes(namaLoc) && namaLoc != location){
             ctx.reply("<b>Nama Lokasi sudah terdaftar.</b>\nSilakan gunakan Nama Lokasi lain!",
                       {parse_mode:'HTML'});
             return ctx.scene.leave();
@@ -574,9 +597,9 @@ MongoDB.connectDB(async (err) => {
           if(isSaved){
             let strMessage = '<b>Update data lokasi berhasil.</b>\nCheck data lagi dengan:'+
                               '\n/showprofile -> klik show my location';
-            ctx.reply(strMessage, {parse_mode:'HTML'});
+            await ctx.reply(strMessage, {parse_mode:'HTML'});
           }else{
-            ctx.reply("<b>Update data lokasi gagal.</b>\nSilakan ulangi langkah dari awal!",{parse_mode:'HTML'});
+            await ctx.reply("<b>Update data lokasi gagal.</b>\nSilakan ulangi langkah dari awal!",{parse_mode:'HTML'});
           }
           return ctx.scene.leave();
         } catch (e) {
@@ -675,20 +698,23 @@ MongoDB.connectDB(async (err) => {
       '- Aktifkan GPS untuk bisa membagikan lokasimu secara realtime\n'+
       '- Input nama lokasi harus unique (tidak boleh sama)';
       await ctx.reply(strMenuLokasi,{parse_mode:'HTML'});
-      await ctx.scene.enter('location');
+      await ctx.scene.enter('reqLocation');
     }
   })
 
   bot.command('ngumumin', async ctx => {
     var userID = ctx.chat.id.toString();
     var isExistID = await utils.checkExistID(userID);
-    if(!isExistID){
-      await ctx.reply("<b>Anda Bukan Maintainer</b>",
-      {parse_mode:'HTML'})
-    }else{
-      if(userID == process.env.maintainer){
+    if(isExistID){
+      if(userID == process.env.MAINTAINER.toString()){
         await ctx.scene.enter('broadcast');
+      }else{
+        await ctx.reply("<b>Anda Bukan Maintainer</b>",
+        {parse_mode:'HTML'})
       }
+    }else{
+      await ctx.reply('Oalah ... njih-njihh, <b>Ndoro '+
+          ctx.from.first_name+'</b>\nApa itu `'+ctx.message.text+'` 🙃? hmmm', {parse_mode:'HTML'});
     }
   })
 

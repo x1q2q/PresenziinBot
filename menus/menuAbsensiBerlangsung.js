@@ -3,6 +3,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const {b64, utils } = require('../utils/myUtils');
 
+const convertTZ = (date, tzString) => {
+    return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));
+}
 const absensiObj = {
 	url:"https://ocw.uns.ac.id/presensi-online-mahasiswa/kuliah-berlangsung",
 	async cekAbsensi(strCookie,hasCookie,ctx){
@@ -71,7 +74,8 @@ const absensiObj = {
 					const elemBoxPresensi = '.col-md-12 > .card > .content > .row';
 					$(elemBoxPresensi).find('.col-md-6').each(function (index, element) { // section loop pertemuan
 						let valTgl = $(element).find('small').first().text();
-						let tglNow = date.format(new Date(),'YYYY-MM-DD');
+						const now = new Date();
+						let tglNow = date.format(convertTZ(now, "Asia/Jakarta"),'YYYY-MM-DD');
 						// if(valTgl == '2022-03-28' || valTgl == '2022-04-13' || valTgl == '2022-04-08'){
 						if(valTgl == tglNow){
 							const valPertemuan = $(element).find('p').first().text();
@@ -98,7 +102,7 @@ const absensiObj = {
 				dataPresensi[0]["pertemuan"].push(newParams);
 			}
 		}catch(e){
-			await ctx.reply("Gagal mengambil data presensi\nSilakan ulangi perintah /gasabsen");
+      await ctx.reply("Gagal mengambil data presensi, session login telah habis.\nSilakan ulangi perintah /gasabsen");
 		}
 		return dataPresensi;
 	},
@@ -109,8 +113,9 @@ const absensiObj = {
 					.then(async res => {
 						var resp = res[0];
 						let isUrl = await utils.isValidURL(resp.url);
+            const now = new Date();
 						var dtResponse ={
-							"waktu":date.format(new Date(),'DD/MM/YYYY HH:mm:ss'),
+							"waktu":date.format(convertTZ(now, "Asia/Jakarta"),'DD/MM/YYYY HH:mm:ss'),
 							"id":resp.item,
 							"urlMeet":(isUrl) ? resp.url : resp.urlGet // urlGet: ocw.xxx?id=TVRxxx
 						};

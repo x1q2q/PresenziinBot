@@ -4,6 +4,9 @@ const date = require('date-and-time');
 const MongoDB = require('./mongoUtil');
 
 // func global
+const convertTZ = (date, tzString) => {
+    return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));
+}
 const b64 = (tipe,str) => {
   var trueb64 = "";
   var b64temp = str;
@@ -102,15 +105,15 @@ const utils = {
         var extraParams = { // untuk register
           "location": userObj.location,
           "code": userObj.code,
-          "insert_timestamp": timestamp(now),
+          "insert_timestamp": timestamp(convertTZ(now, "Asia/Jakarta")),
           "update_timestamp":"",
-          "expired_in":timestamp(expiredin),
+          "expired_in":timestamp(convertTZ(expiredin, "Asia/Jakarta")),
           "is_active":1,
           "cookie":"-"
         }
       }else{ // tipe edit
         var extraParams = {
-          "update_timestamp":timestamp(now)
+          "update_timestamp":timestamp(convertTZ(now, "Asia/Jakarta"))
         }
       }
       let newParams = {...userParams, ...extraParams};
@@ -183,8 +186,9 @@ const utils = {
 
       var dtUsers = userData.filter(el => el['userid'] == userid);
       var expired = await userProfile[0]['expired_in'];
-      const objNow = new Date();
-      const objExpired = date.parse(expired, 'DD-MM-YYYY HH:mm:ss');
+      const now = new Date();
+      const objExpired = convertTZ(date.parse(expired, 'DD-MM-YYYY HH:mm:ss'), "Asia/Jakarta");
+      const objNow = convertTZ(now, "Asia/Jakarta");
       if(expired != "" && objExpired > objNow){
         if(dtUsers[0]["is_active"] == 0){
           // walaupun belum expired tpi tetap tidak bisa karena is_active 0
@@ -197,6 +201,7 @@ const utils = {
         return true;
       }
     }catch(e){
+      console.log(e);
       return true; // jika error
     }
   }

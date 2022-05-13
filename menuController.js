@@ -12,18 +12,30 @@ async function authLogin(ctx){
   const newUser = await MongoDB.getCollection('users');
   var userProfile = await newUser.find({userid:userID}).toArray();
 
-  let hasCookie = userProfile[0]["cookie"];
+  let hasCookie = userProfile[0]["cookie"]; // strCookie
   if(hasCookie != "-"){
-    const isDel = await utils.checkCookie(userID,hasCookie);
-    isSuccess = !isDel;
+    const wrongCookieFormat = await utils.checkCookie(userID,hasCookie);
+    if(wrongCookieFormat){
+      await ctx.reply("Session login telah habis. Silakan ulangi langkah /login");
+    }
+    isSuccess = !wrongCookieFormat;
   } else {
     await ctx.reply("Sedang login...");
     await menuLogin.login(userID).then( async(login)=> {
       isSuccess = login[0].status;
+      let dtCookie = login[0].cookie;
       await ctx.reply(login[0].statusMsg);
       if(!isSuccess){
         await newUser.updateOne({userid:userID},{$set:{cookie:'-'}});
         return false;
+      }else{ // jika berhasil login & ada cookie
+        const wrongCookieFormat = await utils.checkCookie(userID,dtCookie); // checkCookie cacat / tidak
+        if(wrongCookieFormat){ // jika cookie cacat
+          await newUser.updateOne({userid:userID},{$set:{cookie:'-'}});
+          return false;
+        }else{ // jika cookie tepat
+          await newUser.updateOne({userid:userID},{$set:{cookie:dtCookie}});
+        }
       }
     }).catch(function(err){
       ctx.reply(err);

@@ -13,7 +13,7 @@ const loggedCheck = async (page) => {
 const loginObj = {
 	url: 'https://ocw.uns.ac.id/saml/login',
 	async login(userID){
-		var dtLogin = [{"status":false,"statusMsg":"-"}];
+		var dtLogin = [{"status":false,"statusMsg":"-","cookie":"-"}];
     const newUser = await MongoDB.getCollection('users');
     var userProfile = await newUser.find({userid:userID}).toArray();
 
@@ -39,9 +39,11 @@ const loginObj = {
 								strCookie = strCookie.join("; ");
 						return strCookie;
 					});
-					await newUser.updateOne({userid:userID},{$set:{cookie:dtCookie}});
-					dtLogin[0].status = true;
+					// await newUser.updateOne({userid:userID},{$set:{cookie:dtCookie}});
+          dtLogin[0].status = true;
 					dtLogin[0].statusMsg = 'Berhasil Login';
+          dtLogin[0].cookie = dtCookie;
+
 					console.log(`${email} success login`);
 					await browser.close();
 				}else{
