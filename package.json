@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^0.26.0",
     "base-64": "^1.0.0",
+    "cfonts": "^2.10.1",
     "cheerio": "^1.0.0-rc.10",
     "date-and-time": "^2.3.0",
     "dotenv": "^16.0.0",
@@ -19,6 +20,7 @@
     "telegraf": "^4.7.0"
   },
   "repository": {
-    "type": "git"
+    "type": "git",
+    "url": "https://git.heroku.com/peaceful-lake-01302.git"
   }
 }

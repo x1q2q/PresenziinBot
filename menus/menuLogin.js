@@ -1,5 +1,5 @@
 const browserObj = require('../utils/browser');
-const {b64, utils } = require('../utils/myUtils');
+const {b64, timestamp, convertTZ, utils} = require('../utils/myUtils');
 const MongoDB = require('../utils/mongoUtil');
 
 const loggedCheck = async (page) => {
@@ -13,7 +13,7 @@ const loggedCheck = async (page) => {
 const loginObj = {
 	url: 'https://ocw.uns.ac.id/saml/login',
 	async login(userID){
-		var dtLogin = [{"status":false,"statusMsg":"-","cookie":"-"}];
+		var dtLogin = [{"status":false,"cookie":"-"}];
     const newUser = await MongoDB.getCollection('users');
     var userProfile = await newUser.find({userid:userID}).toArray();
 
@@ -40,15 +40,12 @@ const loginObj = {
 						return strCookie;
 					});
 					// await newUser.updateOne({userid:userID},{$set:{cookie:dtCookie}});
-          dtLogin[0].status = true;
-					dtLogin[0].statusMsg = 'Berhasil Login';
+					dtLogin[0].status = true;
           dtLogin[0].cookie = dtCookie;
-
 					console.log(`${email} success login`);
 					await browser.close();
 				}else{
           dtLogin[0].status=false;
-          dtLogin[0].statusMsg = 'Gagal Login.\nEmail/password salah. Silakan ulangi lagi!';
           console.log(`${email} login failed. email/passwd incorrect`);
 				}
 				return resolve(dtLogin);

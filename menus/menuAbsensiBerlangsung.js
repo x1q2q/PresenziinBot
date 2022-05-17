@@ -1,11 +1,8 @@
 const date = require('date-and-time');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const {b64, utils } = require('../utils/myUtils');
+const {b64, timestamp, convertTZ, utils} = require('../utils/myUtils');
 
-const convertTZ = (date, tzString) => {
-    return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));
-}
 const absensiObj = {
 	url:"https://ocw.uns.ac.id/presensi-online-mahasiswa/kuliah-berlangsung",
 	async cekAbsensi(strCookie,hasCookie,ctx){
@@ -19,6 +16,7 @@ const absensiObj = {
 			if(!hasCookie){// stopped proccess
 				return dataPresensi;
 			}
+      console.log(`${ctx.from.first_name} navigate to menu absensi berlangsung...`);
 			await ctx.reply("Sedang mengambil data presensi...");
 			const response = await axios.get(this.url,config);
 			const $ = cheerio.load(response.data);
@@ -62,6 +60,19 @@ const absensiObj = {
 				let tmpMsg = "";
 				var slugMakul = dataAbsen[k]["nama_mk"]+' - ['+dataAbsen[k]["dosen"]+'] ';
 				if(dataAbsen[k]['warna'] == 'merah'){
+					let splitMakul = dataAbsen[k]["nama_mk"].split('-');
+					let newMakul = splitMakul[1].trim();
+					let kodemk = splitMakul[0].trim();
+					let splitPengampu = dataAbsen[k]["dosen"].split(' ');
+					let link = dataAbsen[k]["link"].replace('%3D%3D','==');
+							link = link.replace('&amp;','&');
+					let indexSearch = link.indexOf("kelas=");
+					let indexLast = link.indexOf("&prodi=")
+					let encKelasTxt = link.substring(indexSearch+6,indexLast);
+					let kelas = b64('decode',encKelasTxt);
+					let strSlug = `${kodemk} ${newMakul} ${splitPengampu[0]} ${kelas}`;
+					var newSlugmk = strSlug.replace(/ /g,'-').toLowerCase();
+
 					tmpMsg += "⚠️ <b>BELUM ABSEN</b> untuk MK: "+dataAbsen[k]["nama_mk"]+ " [" +dataAbsen[k]["dosen"]+"] jam "+dataAbsen[k]["waktu"]+" (";
 					var tmpValPertemuan = [];
 					var nomor = 0;
@@ -76,14 +87,14 @@ const absensiObj = {
 						let valTgl = $(element).find('small').first().text();
 						const now = new Date();
 						let tglNow = date.format(convertTZ(now, "Asia/Jakarta"),'YYYY-MM-DD');
-						// if(valTgl == '2022-03-28' || valTgl == '2022-04-13' || valTgl == '2022-04-08'){
+						// if(valTgl == '2022-05-17' || valTgl == '2022-03-22' || valTgl == '2022-03-08'){
 						if(valTgl == tglNow){
 							const valPertemuan = $(element).find('p').first().text();
 							const link = $(element).find('a.btn').attr('href');
 							tmpValPertemuan.push(valPertemuan);
 							const indexSearch = link.indexOf("id=");
 							const txtID = link.substring(indexSearch+3,link.length);
-							let pilihanAbsen = {"pertemuan":valPertemuan,"id":txtID,"makul":slugMakul};
+							let pilihanAbsen = {"pertemuan":valPertemuan,"id":txtID,"makul":slugMakul,"slugmakul":newSlugmk};
 							dataPresensi[0]["pertemuan"].push(pilihanAbsen);
 							dtTxtId.push(txtID);
 						}
@@ -98,11 +109,12 @@ const absensiObj = {
 			if(dtTxtId.length > 1){ // add menu all absen if more than 1
 				const reducer = (accumulator, curr) => accumulator + ","+curr;
 				const arrTxtId = dtTxtId.reduce(reducer);
-				let newParams = {"pertemuan":"semua","id":arrTxtId,"makul":"Absenkan"};
+				let newParams = {"pertemuan":"semua","id":arrTxtId,"makul":"Absenkan","slugmakul":"-"};
 				dataPresensi[0]["pertemuan"].push(newParams);
 			}
 		}catch(e){
-      await ctx.reply("Gagal mengambil data presensi, session login telah habis.\nSilakan ulangi perintah /gasabsen");
+			console.log(e);
+			await ctx.reply("Gagal mengambil data presensi, session login telah habis.\nSilakan ulangi perintah /gasabsen");
 		}
 		return dataPresensi;
 	},

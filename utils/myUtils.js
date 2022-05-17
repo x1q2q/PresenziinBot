@@ -4,9 +4,6 @@ const date = require('date-and-time');
 const MongoDB = require('./mongoUtil');
 
 // func global
-const convertTZ = (date, tzString) => {
-    return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));
-}
 const b64 = (tipe,str) => {
   var trueb64 = "";
   var b64temp = str;
@@ -19,6 +16,9 @@ const b64 = (tipe,str) => {
 }
 const timestamp = (now) => {
   return date.format(now,'DD-MM-YYYY HH:mm:ss');
+}
+const convertTZ = (date, tzString) => {
+  return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));
 }
 const expired = (now, tipe, sum) => {
   switch (tipe) {
@@ -129,7 +129,7 @@ const utils = {
       }
       return true;
 	  } catch (e) {
-	    console.log("error save credential",e);
+	    console.log("error save credential ",e);
       return false;
 	  }
 	},
@@ -165,10 +165,124 @@ const utils = {
       }
       return true;
 	  } catch (e) {
-	    console.log("error save location",e);
+	    console.log("error save location ",e);
       return false;
 	  }
 	},
+  async saveToLog(logParams,userID){
+	  try {
+      const newUser = await MongoDB.getCollection('users');
+      const newLog = await MongoDB.getCollection('logs');
+      const now = new Date();
+
+      var userProfile = await newUser.find({userid:userID}).toArray();
+      var nim = userProfile[0]["nim"];
+      var tglNow = date.format(convertTZ(now, "Asia/Jakarta"),'DD-MM-YYYY');
+      var extraParams = {
+        "kode_prodi": nim.substring(0,4),
+        "by_user": userID,
+        "timestamp": timestamp(convertTZ(now, "Asia/Jakarta"))
+      };
+      var newParams = {...logParams, ...extraParams};
+      var tipeUpdate = ["check_menu","register_makul"];
+      if(tipeUpdate.includes(logParams.tipe_log)){ // jika tipe lognya update maka update
+        var kdLog = (logParams.tipe_log == 'check_menu') ?
+                    logParams.kode_log+'|'+tglNow : logParams.kode_log;
+        var dtOldLog = await MongoDB.getCollection('logs').find({kode_log:kdLog,by_user:userID}).toArray();
+
+        if(dtOldLog.length == 0){ // jika sebelumnya blm ada utk hari ini maka insert
+          if(logParams.tipe_log == 'check_menu'){
+            newParams.kode_log = kdLog;
+            newParams.desc = newParams.desc + ' sebanyak:1';
+          }
+          await newLog.insertOne(newParams);
+        }else{ // jika sdh ada utk hari ini maka update
+          if(logParams.tipe_log == 'check_menu'){
+            var descLog = dtOldLog[0]["desc"];
+            var splitLog = descLog.split(':'); // use 1 index to get int
+            var incCheck = parseInt(splitLog[1])+1;
+            var newDesc = logParams.desc+' sebanyak:'+incCheck.toString();
+          }else{
+            var newDesc = logParams.desc;
+          }
+          await newLog.updateOne(
+            {
+              $and: [
+                {kode_log:kdLog},
+                {by_user:userID},
+              ]
+            },
+            {$set:{"desc":newDesc,timestamp:extraParams.timestamp}});
+        }
+      }else{ // jika bukan maka insert
+        await newLog.insertOne(newParams);
+      }
+      return true;
+	  } catch (e) {
+	    console.log("error save log ",e);
+      return false;
+	  }
+	},
+  async sendBroadcast(broadcastParams){
+    var dataPesan = [];
+    try {
+      var dtPenerima = broadcastParams.dataPenerima;
+      var parameter = broadcastParams.parameter;
+      var textMsg = broadcastParams.textMsg;
+
+      const newdtUsers = await MongoDB.getCollection('users');
+      switch (parameter) {
+        case 'all':
+          var dtUsers = await newdtUsers.find({}).toArray();
+          break;
+
+        case 'code':
+          var dtUsers = await newdtUsers.find(
+              {code : { $in : dtPenerima }}).toArray();
+          break;
+
+        case 'userid':
+          var dtUsers = await newdtUsers.find(
+              {userid : { $in : dtPenerima }}).toArray();
+          break;
+
+        case 'nim':
+          var dtUsers = await newdtUsers.find(
+              {nim : { $in : dtPenerima }}).toArray();
+          break;
+
+        default: // default untuk [all]
+          var dtUsers = [];
+      }
+      let strHeader = '<b>📢 Pesan Siaran Baru</b>\n\n';
+      let strFooter = '\n\n<i>*pesan ini disiarkan secara otomatis.</i>';
+      for(let id=0; id<dtUsers.length; id++){
+        let chatid = parseInt(dtUsers[id]["userid"]);
+        let newTxtMsg = textMsg.replace(/{email}/g, dtUsers[id]["email"]);
+        let pesan = strHeader + newTxtMsg + strFooter;
+        dataPesan.push({"userid":chatid,"pesan":pesan});
+      }
+      return dataPesan;
+    } catch (e) {
+      console.log('error to broadcast ',e);
+      return dataPesan;
+    }
+  },
+  async getDataNim(slug,userID){
+    var dataNim = [];
+    try {
+      const newUser = await MongoDB.getCollection('users');
+      const newGroup = await MongoDB.getCollection('groups');
+      var userProfile = await newUser.find({userid:userID}).toArray();
+      var nimUser = userProfile[0]["nim"];
+      var group = await newGroup.find({slugmakul:slug}).toArray();
+      var groupNim = group[0]["list_nim"];
+      dataNim = groupNim.filter(el => el != nimUser); // hanya broadcast selain nim sendiri
+    } catch (e) {
+      return dataNim;
+    }
+    return dataNim;
+  },
   async checkExistID(userid){
     try {
       const cursor = await MongoDB.getCollection('users').countDocuments({userid:userid});
@@ -204,6 +318,19 @@ const utils = {
       console.log(e);
       return true; // jika error
     }
+  },
+  async checkExistIdAbsen(textid){ // check id absen on the log
+    try {
+      const cursor = await MongoDB.getCollection('logs').countDocuments({
+                    $and: [
+                      {kode_log:textid},
+                      {tipe_log:'absen'}
+                    ]});
+      if(cursor > 0) return true;
+      return false;
+    } catch (e) {
+      return false;
+    }
   }
 }
-module.exports = {b64,utils};
+module.exports = {b64, timestamp, convertTZ, utils};
