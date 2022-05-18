@@ -1,11 +1,11 @@
 # About
-1.) BOT ini digunakan untuk mempermudah presensi mahasiswa UNS
-2.) BOT ini sama sekali tidak ingin merugikan pihak manapun
-3.) BOT ini hanya projek iseng belaka, untuk belajar, & lain hal
-4.) BOT ini 100% gratis.
+1.) BOT ini digunakan untuk mempermudah presensi mahasiswa UNS<br/>
+2.) BOT ini sama sekali tidak ingin merugikan pihak manapun<br/>
+3.) BOT ini hanya projek iseng belaka, untuk belajar, & lain hal<br/>
+4.) BOT ini 100% gratis.<br/>
 
 # Help
-Link BOT: @presenziinBot
+Link BOT: @presenziinBot<br/>
 Link tutorial cara pemakaian: https://drive.google.com/drive/folders/1aGh0-RIZrCWxyM0jyiiPsbizepUDvUie?usp=sharing 
 
 # FAQ
