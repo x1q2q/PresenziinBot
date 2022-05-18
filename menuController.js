@@ -80,18 +80,15 @@ async function absenkan(textid,textMsg,ctx){
         reply_markup: {inline_keyboard: [[ { text: "Buka Zoom/Meet", url: resp[0]["urlMeet"] } ]]}
       });
       await ctx.replyWithSticker(sticker);
-      var isExistIdAbsen = await utils.checkExistIdAbsen(textid);
-      if(!isExistIdAbsen){
-        let params = {
-          "tipe_log":"absen",
-          "kode_log":`${textid}`,
-          "desc":`@${ctx.from.first_name} berhasil absen. ${textMsg}`
-        };
-        if(!isSuccess){
-          params.desc = `@${ctx.from.first_name} gagal absen. ${textMsg}`;
-        }
-        await utils.saveToLog(params,userID);
+      let params = {
+        "tipe_log":"absen",
+        "kode_log":`${textid}`,
+        "desc":`@${ctx.from.first_name} berhasil absen. ${textMsg}`
+      };
+      if(!isSuccess){
+        params.desc = `@${ctx.from.first_name} gagal absen. ${textMsg}`;
       }
+      await utils.saveToLog(params,userID);
 		});
 
     return isSuccess;

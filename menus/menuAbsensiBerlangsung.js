@@ -60,19 +60,6 @@ const absensiObj = {
 				let tmpMsg = "";
 				var slugMakul = dataAbsen[k]["nama_mk"]+' - ['+dataAbsen[k]["dosen"]+'] ';
 				if(dataAbsen[k]['warna'] == 'merah'){
-					let splitMakul = dataAbsen[k]["nama_mk"].split('-');
-					let newMakul = splitMakul[1].trim();
-					let kodemk = splitMakul[0].trim();
-					let splitPengampu = dataAbsen[k]["dosen"].split(' ');
-					let link = dataAbsen[k]["link"].replace('%3D%3D','==');
-							link = link.replace('&amp;','&');
-					let indexSearch = link.indexOf("kelas=");
-					let indexLast = link.indexOf("&prodi=")
-					let encKelasTxt = link.substring(indexSearch+6,indexLast);
-					let kelas = b64('decode',encKelasTxt);
-					let strSlug = `${kodemk} ${newMakul} ${splitPengampu[0]} ${kelas}`;
-					var newSlugmk = strSlug.replace(/ /g,'-').toLowerCase();
-
 					tmpMsg += "⚠️ <b>BELUM ABSEN</b> untuk MK: "+dataAbsen[k]["nama_mk"]+ " [" +dataAbsen[k]["dosen"]+"] jam "+dataAbsen[k]["waktu"]+" (";
 					var tmpValPertemuan = [];
 					var nomor = 0;
@@ -82,6 +69,8 @@ const absensiObj = {
 					};
 					const resp = await axios.get(dataAbsen[k]["link"],config);
 					const $ = cheerio.load(resp.data);
+					let mkKelas = $('.heading-kelas').find('.kelas').text().trim();
+					var kelas = mkKelas.substr(mkKelas.length-1);
 					const elemBoxPresensi = '.col-md-12 > .card > .content > .row';
 					$(elemBoxPresensi).find('.col-md-6').each(function (index, element) { // section loop pertemuan
 						let valTgl = $(element).find('small').first().text();
@@ -92,6 +81,14 @@ const absensiObj = {
 							const valPertemuan = $(element).find('p').first().text();
 							const link = $(element).find('a.btn').attr('href');
 							tmpValPertemuan.push(valPertemuan);
+
+							let splitMakul = dataAbsen[k]["nama_mk"].split('-');
+							let newMakul = splitMakul[1].trim();
+							let kodemk = splitMakul[0].trim();
+							let splitPengampu = dataAbsen[k]["dosen"].split(' ');
+							let strSlug = `${kodemk} ${newMakul} ${splitPengampu[0]} ${kelas}`;
+							let newSlugmk = strSlug.replace(/ /g,'-').toLowerCase();
+
 							const indexSearch = link.indexOf("id=");
 							const txtID = link.substring(indexSearch+3,link.length);
 							let pilihanAbsen = {"pertemuan":valPertemuan,"id":txtID,"makul":slugMakul,"slugmakul":newSlugmk};
