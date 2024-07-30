@@ -4,6 +4,10 @@
 3.) BOT ini hanya projek iseng belaka, untuk belajar, & lain hal<br/>
 4.) BOT ini 100% gratis.<br/>
 
+# Demo
+[![Demo Presenziin Bot Usecase]](https://github.com/x1q2q/PresenziinBot/blob/main/Telegram.mp4)
+
+
 # Help
 Link BOT: @presenziinBot<br/>
 Link tutorial cara pemakaian: https://drive.google.com/drive/folders/1aGh0-RIZrCWxyM0jyiiPsbizepUDvUie?usp=sharing 
